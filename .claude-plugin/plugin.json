@@ -1,0 +1,10 @@
+{
+  "name": "claude-harness",
+  "version": "0.1.0",
+  "description": "Minimal multi-agent orchestration harness for Claude Code — hooks + state machine",
+  "author": {
+    "name": "zzoo"
+  },
+  "license": "MIT",
+  "hooks": "./plugin-hooks/hooks.json"
+}
