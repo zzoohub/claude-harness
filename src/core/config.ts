@@ -16,6 +16,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
+import { pathToFileURL } from 'url';
 import type { Agent, FileConfig, HarnessConfig } from './types.js';
 import { PATHS } from './paths.js';
 
@@ -73,6 +74,29 @@ function merge(base: HarnessConfig, overlay: FileConfig | null, basePath?: strin
 }
 
 /**
+ * Load project config from .claude/harness.config.mjs or .claude/harness.json.
+ *
+ * Priority: .mjs (ES module with defineConfig) > .json
+ * The .mjs path lets power users write typed configs via:
+ *   import { defineConfig } from 'claude-harness';
+ *   export default defineConfig({ ... });
+ */
+export async function loadProjectConfig(): Promise<FileConfig | null> {
+  const mjsPath = join(process.cwd(), '.claude', 'harness.config.mjs');
+  if (existsSync(mjsPath)) {
+    try {
+      const mod = await import(pathToFileURL(mjsPath).href);
+      return (mod.default ?? mod) as FileConfig;
+    } catch (err) {
+      process.stderr.write(
+        `[harness] Failed to load ${mjsPath}: ${err instanceof Error ? err.message : err}\n`,
+      );
+    }
+  }
+  return loadJsonFile(PATHS.projectConfig);
+}
+
+/**
  * Load and merge all config sources.
  *
  * Merge order: programmatic (base) ← user ← project
@@ -82,6 +106,17 @@ function merge(base: HarnessConfig, overlay: FileConfig | null, basePath?: strin
 export function loadConfig(programmatic: HarnessConfig): HarnessConfig {
   const userCfg = loadJsonFile(PATHS.userConfig);
   const projCfg = loadJsonFile(PATHS.projectConfig);
+
+  let config = { ...programmatic };
+  config = merge(config, userCfg, dirname(PATHS.userConfig));
+  config = merge(config, projCfg, dirname(PATHS.projectConfig));
+  return config;
+}
+
+/** Async variant — resolves .mjs project configs before merging. */
+export async function loadConfigAsync(programmatic: HarnessConfig): Promise<HarnessConfig> {
+  const userCfg = loadJsonFile(PATHS.userConfig);
+  const projCfg = await loadProjectConfig();
 
   let config = { ...programmatic };
   config = merge(config, userCfg, dirname(PATHS.userConfig));

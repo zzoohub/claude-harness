@@ -12,7 +12,7 @@
  */
 
 import { createHarness } from '../index.js';
-import { loadJsonFile } from '../core/config.js';
+import { loadProjectConfig } from '../core/config.js';
 import type { HookEvent, HookInput } from '../core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -58,8 +58,8 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Load project config and create harness
-  const fileCfg = loadJsonFile('.claude/harness.json');
+  // Load project config (.mjs > .json) and create harness
+  const fileCfg = await loadProjectConfig();
   const harness = createHarness({ agents: fileCfg?.agents ?? {} });
 
   // Dispatch through hook engine

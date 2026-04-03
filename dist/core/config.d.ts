@@ -18,6 +18,15 @@ export declare function loadJsonFile(path: string): FileConfig | null;
 /** Resolve "file:relative/path.md" prompts to their contents. */
 export declare function resolvePrompts(agents: Record<string, Agent>, basePath: string): void;
 /**
+ * Load project config from .claude/harness.config.mjs or .claude/harness.json.
+ *
+ * Priority: .mjs (ES module with defineConfig) > .json
+ * The .mjs path lets power users write typed configs via:
+ *   import { defineConfig } from 'claude-harness';
+ *   export default defineConfig({ ... });
+ */
+export declare function loadProjectConfig(): Promise<FileConfig | null>;
+/**
  * Load and merge all config sources.
  *
  * Merge order: programmatic (base) ← user ← project
@@ -25,3 +34,5 @@ export declare function resolvePrompts(agents: Record<string, Agent>, basePath: 
  * Programmatic keys that aren't in file configs survive untouched.
  */
 export declare function loadConfig(programmatic: HarnessConfig): HarnessConfig;
+/** Async variant — resolves .mjs project configs before merging. */
+export declare function loadConfigAsync(programmatic: HarnessConfig): Promise<HarnessConfig>;

@@ -41,12 +41,14 @@ export type {
   HookHandler, HarnessConfig, FileConfig,
 } from './core/types.js';
 
+export { defineConfig } from './core/types.js';
+
 export { PATHS } from './core/paths.js';
 export { MODE, EVENT, WRITE_TOOLS } from './core/constants.js';
 export { AgentRegistry } from './core/registry.js';
 export { HookEngine } from './core/hooks.js';
 export { buildSystemPrompt } from './core/prompt.js';
-export { loadConfig, loadJsonFile, resolvePrompts } from './core/config.js';
+export { loadConfig, loadConfigAsync, loadJsonFile, loadProjectConfig, resolvePrompts } from './core/config.js';
 
 export {
   readState, writeState, clearState,

@@ -317,26 +317,67 @@ npm install
 npm run build
 ```
 
-`.claude/harness.json` 에 에이전트 정의:
+### 설정 작성 — 두 가지 방법
 
-```json
+#### 방법 1: JSON + Schema (기본, npm 설치 불필요)
+
+`.claude/harness.json`에 `$schema`를 추가하면 VSCode 자동완성 + 유효성 검사가 동작합니다:
+
+```jsonc
+// .claude/harness.json
 {
+  "$schema": "~/.claude/plugins/claude-harness/harness.schema.json",
   "agents": {
     "explorer": {
       "description": "코드베이스 탐색",
       "prompt": "코드 패턴, 파일 구조, 의존성을 빠르게 파악합니다.",
-      "model": "haiku"
+      "model": "haiku"    // ← "haiku" | "sonnet" | "opus" 자동완성
     },
     "coder": {
       "description": "구현 전문",
-      "prompt": "기능 구현, 버그 수정, 리팩토링을 담당합니다.",
+      "prompt": "file:agents/coder.md",
       "model": "sonnet"
     }
   }
 }
 ```
 
-코드로 모드까지 설정:
+npm 패키지로 설치한 경우 schema 경로:
+```
+"$schema": "./node_modules/claude-harness/harness.schema.json"
+```
+
+#### 방법 2: defineConfig + .mjs (파워유저, 완전한 타입 체크)
+
+```bash
+npm i -D claude-harness
+```
+
+```typescript
+// .claude/harness.config.ts
+import { defineConfig } from 'claude-harness';
+
+export default defineConfig({
+  agents: {
+    explorer: {
+      description: '코드 탐색',       // ← TS 타입 체크 + 자동완성
+      prompt: 'file:agents/explorer.md',
+      model: 'haiku',
+    },
+    coder: {
+      description: '구현 전문',
+      prompt: 'file:agents/coder.md',
+      model: 'sonnet',
+    },
+  },
+  systemPromptSuffix: '항상 한국어로 응답하세요.',
+});
+```
+
+`.ts`를 `.mjs`로 빌드한 뒤 `.claude/harness.config.mjs`에 두면 bridge가 자동으로 로드합니다.
+로드 우선순위: `.claude/harness.config.mjs` > `.claude/harness.json`
+
+### 코드로 모드까지 설정:
 
 ```ts
 import {

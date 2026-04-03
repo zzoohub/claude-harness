@@ -11,7 +11,7 @@
  * always knows which lifecycle event triggered it.
  */
 import { createHarness } from '../index.js';
-import { loadJsonFile } from '../core/config.js';
+import { loadProjectConfig } from '../core/config.js';
 // ---------------------------------------------------------------------------
 // stdin / stdout helpers
 // ---------------------------------------------------------------------------
@@ -49,8 +49,8 @@ async function main() {
         process.stdout.write('{}');
         return;
     }
-    // Load project config and create harness
-    const fileCfg = loadJsonFile('.claude/harness.json');
+    // Load project config (.mjs > .json) and create harness
+    const fileCfg = await loadProjectConfig();
     const harness = createHarness({ agents: fileCfg?.agents ?? {} });
     // Dispatch through hook engine
     const input = parseInput(raw, event);

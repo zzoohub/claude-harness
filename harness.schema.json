@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Claude Harness Config",
+  "description": "Configuration for claude-harness multi-agent orchestration",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Path to this JSON schema file"
+    },
+    "agents": {
+      "type": "object",
+      "description": "Sub-agent definitions keyed by name",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "prompt"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "What this agent does — shown in the orchestrator prompt"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Inline prompt text, or \"file:path/to/prompt.md\" to load from disk"
+          },
+          "model": {
+            "type": "string",
+            "enum": ["haiku", "sonnet", "opus"],
+            "description": "Model override for this agent"
+          },
+          "tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Allowed tools for this agent"
+          },
+          "disallowedTools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Tools this agent cannot use"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "systemPromptSuffix": {
+      "type": "string",
+      "description": "Extra instructions appended to the auto-generated orchestrator prompt"
+    }
+  },
+  "additionalProperties": false
+}

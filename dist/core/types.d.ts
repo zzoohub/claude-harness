@@ -57,6 +57,16 @@ export interface HarnessConfig {
 }
 /** Shape of the JSON config files (.claude/harness.json, etc.). */
 export interface FileConfig {
+    /** JSON Schema reference — ignored at runtime. */
+    $schema?: string;
     agents?: Record<string, Agent>;
     systemPromptSuffix?: string;
 }
+/**
+ * Identity helper for type-safe config authoring.
+ *
+ * Usage in .claude/harness.config.mjs (or .ts with a build step):
+ *   import { defineConfig } from 'claude-harness';
+ *   export default defineConfig({ agents: { ... } });
+ */
+export declare function defineConfig(config: FileConfig): FileConfig;
