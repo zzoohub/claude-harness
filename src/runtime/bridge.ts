@@ -20,9 +20,9 @@ import type { HookEvent, HookInput } from '../core/types.js';
 // ---------------------------------------------------------------------------
 
 async function readStdin(): Promise<string> {
-  const chunks: Buffer[] = [];
+  const chunks: Uint8Array[] = [];
   for await (const chunk of process.stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    chunks.push(chunk instanceof Uint8Array ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks).toString('utf-8');
 }

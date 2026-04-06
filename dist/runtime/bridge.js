@@ -18,7 +18,7 @@ import { loadProjectConfig } from '../core/config.js';
 async function readStdin() {
     const chunks = [];
     for await (const chunk of process.stdin) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        chunks.push(chunk instanceof Uint8Array ? chunk : Buffer.from(chunk));
     }
     return Buffer.concat(chunks).toString('utf-8');
 }
