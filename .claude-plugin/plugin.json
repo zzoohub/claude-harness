@@ -6,6 +6,5 @@
     "name": "zzoo"
   },
   "license": "MIT",
-  "hooks": "./plugin-hooks/hooks.json",
-  "commands": "commands"
+  "hooks": "./plugin-hooks/hooks.json"
 }
