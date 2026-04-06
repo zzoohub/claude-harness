@@ -10,7 +10,6 @@
  * Write/Edit/Agent so the workflow isn't interrupted.
  */
 
-import { isActive, readState } from '../core/state.js';
 import type { PermissionHookOutput } from '../core/types.js';
 
 // Shell metacharacters that enable command chaining / injection
@@ -121,37 +120,31 @@ export function handlePermissionRequest(input: PermissionRequestInput): Permissi
     }
   }
 
-  // --- Harness mode active: auto-allow remaining tools ---
-  if (!isActive()) {
-    return passthrough();
-  }
+  // --- Auto-allow orchestration toolkit (harness is installed = orchestration mode) ---
 
-  const state = readState();
-  const mode = state.mode;
-
-  // Auto-allow read-only tools
+  // Read-only tools — always safe
   if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
-    return allow(`${mode} mode: auto-allow ${toolName}`);
+    return allow(`harness: auto-allow ${toolName}`);
   }
 
-  // Auto-allow write tools (sub-agents need these)
+  // Write tools — sub-agents need these to implement
   if (toolName === 'Write' || toolName === 'Edit' || toolName === 'NotebookEdit') {
-    return allow(`${mode} mode: auto-allow ${toolName}`);
+    return allow(`harness: auto-allow ${toolName}`);
   }
 
-  // Auto-allow Agent (already passed subagent_type check above)
+  // Agent — already passed subagent_type check above
   if (toolName === 'Agent') {
-    return allow(`${mode} mode: auto-allow Agent`);
+    return allow(`harness: auto-allow Agent`);
   }
 
-  // Auto-allow research tools
+  // Research tools
   if (toolName === 'WebSearch' || toolName === 'WebFetch') {
-    return allow(`${mode} mode: auto-allow ${toolName}`);
+    return allow(`harness: auto-allow ${toolName}`);
   }
 
-  // Auto-allow Task tools
+  // Task tools — orchestrator tracks progress
   if (toolName.startsWith('Task')) {
-    return allow(`${mode} mode: auto-allow ${toolName}`);
+    return allow(`harness: auto-allow ${toolName}`);
   }
 
   return passthrough();

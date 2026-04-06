@@ -9,7 +9,6 @@
  * When harness mode is active (autopilot/loop), also auto-allows
  * Write/Edit/Agent so the workflow isn't interrupted.
  */
-import { isActive, readState } from '../core/state.js';
 // Shell metacharacters that enable command chaining / injection
 const DANGEROUS_SHELL_CHARS = /[;&|`$()<>\n\r\t\0\\{}\[\]*?~!#]/;
 // Heredoc operator (<<, <<-, <<~)
@@ -98,31 +97,26 @@ export function handlePermissionRequest(input) {
                 `If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions".`);
         }
     }
-    // --- Harness mode active: auto-allow remaining tools ---
-    if (!isActive()) {
-        return passthrough();
-    }
-    const state = readState();
-    const mode = state.mode;
-    // Auto-allow read-only tools
+    // --- Auto-allow orchestration toolkit (harness is installed = orchestration mode) ---
+    // Read-only tools — always safe
     if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
-        return allow(`${mode} mode: auto-allow ${toolName}`);
+        return allow(`harness: auto-allow ${toolName}`);
     }
-    // Auto-allow write tools (sub-agents need these)
+    // Write tools — sub-agents need these to implement
     if (toolName === 'Write' || toolName === 'Edit' || toolName === 'NotebookEdit') {
-        return allow(`${mode} mode: auto-allow ${toolName}`);
+        return allow(`harness: auto-allow ${toolName}`);
     }
-    // Auto-allow Agent (already passed subagent_type check above)
+    // Agent — already passed subagent_type check above
     if (toolName === 'Agent') {
-        return allow(`${mode} mode: auto-allow Agent`);
+        return allow(`harness: auto-allow Agent`);
     }
-    // Auto-allow research tools
+    // Research tools
     if (toolName === 'WebSearch' || toolName === 'WebFetch') {
-        return allow(`${mode} mode: auto-allow ${toolName}`);
+        return allow(`harness: auto-allow ${toolName}`);
     }
-    // Auto-allow Task tools
+    // Task tools — orchestrator tracks progress
     if (toolName.startsWith('Task')) {
-        return allow(`${mode} mode: auto-allow ${toolName}`);
+        return allow(`harness: auto-allow ${toolName}`);
     }
     return passthrough();
 }
