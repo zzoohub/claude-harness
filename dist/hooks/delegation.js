@@ -64,7 +64,7 @@ function isSafeBash(command) {
 // ---------------------------------------------------------------------------
 const WARN_MSG = (path) => `[DELEGATION REQUIRED] You are an orchestrator — delegate file changes to a sub-agent via the Agent tool instead of writing directly.\nAttempted path: ${path}`;
 const BLOCK_MSG = (path) => `[BLOCKED] Orchestrator cannot modify "${path}" directly. Use the Agent tool to delegate this to a sub-agent.`;
-const BASH_BLOCK_MSG = (cmd) => `[BLOCKED] Orchestrator cannot run this command directly. Delegate to a sub-agent:\n  Agent(subagent_type: "backend-developer" or "general-purpose", mode: "bypassPermissions", prompt: "Run: ${cmd.slice(0, 80)}")`;
+const BASH_DELEGATE_MSG = `[DELEGATION REMINDER] As orchestrator, prefer delegating this command to a sub-agent via Agent tool instead of running it directly.`;
 const AGENT_BLOCK_MSG = `[BLOCKED] Set subagent_type on this Agent call. Check available specialist types in the Agent tool description (e.g. backend-developer, frontend-developer, Explore). If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions".`;
 // ---------------------------------------------------------------------------
 // Path checking
@@ -107,7 +107,7 @@ export function createDelegationGuard(config = {}) {
                 const command = input.toolInput?.['command'] ?? '';
                 if (!command || isSafeBash(command))
                     return {};
-                return { additionalContext: BASH_BLOCK_MSG(command) };
+                return { additionalContext: BASH_DELEGATE_MSG };
             }
             // --- Layer 2: Agent guard (always enforce subagent_type) ---
             if (input.toolName === 'Agent') {
