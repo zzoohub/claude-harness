@@ -133,11 +133,11 @@ export function createDelegationGuard(config: DelegationConfig = {}): HookHandle
       if (level === 'off') return {};
       if (!input.toolName) return {};
 
-      // --- Layer 1: Bash guard (pattern-based) ---
+      // --- Layer 1: Bash guard (soft reminder — cannot hard-block because sub-agents also need Bash) ---
       if (input.toolName === 'Bash') {
         const command = (input.toolInput?.['command'] as string) ?? '';
         if (!command || isSafeBash(command)) return {};
-        return { decision: 'block', reason: BASH_BLOCK_MSG(command) };
+        return { additionalContext: BASH_BLOCK_MSG(command) };
       }
 
       // --- Layer 2: Agent guard (always enforce subagent_type) ---

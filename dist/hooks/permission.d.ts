@@ -1,13 +1,10 @@
 /**
- * PermissionRequest hook — orchestrator delegation enforcement.
+ * PermissionRequest hook — auto-allow tools for orchestration.
  *
- * Two responsibilities:
- *   1. DENY modifying Bash commands → forces delegation to sub-agents
- *   2. DENY Agent calls without subagent_type → forces specialist selection
- *   3. AUTO-ALLOW safe read-only and verification tools
- *
- * When harness mode is active (autopilot/loop), also auto-allows
- * Write/Edit/Agent so the workflow isn't interrupted.
+ * Responsibilities:
+ *   1. AUTO-ALLOW Bash for all sessions (sub-agents need it)
+ *   2. DENY Agent calls without subagent_type
+ *   3. AUTO-ALLOW Write/Edit/Read/Agent/Task/Web tools
  */
 import type { PermissionHookOutput } from '../core/types.js';
 interface PermissionRequestInput {
