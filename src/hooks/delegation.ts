@@ -3,19 +3,18 @@
  * an ORCHESTRATOR, not just "Claude with extra agents."
  *
  * Without this, Claude writes code directly instead of delegating.
- * With this, Write/Edit attempts outside allowed paths get blocked,
- * forcing Claude to use the Agent tool to delegate work.
+ * With this, modifying tool calls get blocked, forcing Claude to
+ * use the Agent tool to delegate work.
  *
  * Three enforcement layers:
- *   1. Write/Edit guard — blocks direct file modification
- *   2. Bash guard — blocks Bash during execute phase (must delegate)
- *   3. Agent guard — reminds when subagent_type is missing
+ *   1. Bash guard — blocks modifying Bash commands (allows read-only/verify)
+ *   2. Agent guard — blocks Agent calls without subagent_type
+ *   3. Write/Edit guard — blocks direct file modification outside allowed paths
  */
 
 import { extname } from 'path';
 import type { HookHandler } from '../core/types.js';
 import { WRITE_TOOLS } from '../core/constants.js';
-import { readState } from '../core/state.js';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -26,8 +25,6 @@ export interface DelegationConfig {
   allowedPaths?: RegExp[];
   /** 'warn' = inject reminder but allow. 'strict' = block the tool call. */
   enforcement?: 'warn' | 'strict' | 'off';
-  /** Phases where Bash is blocked. Default: ['execute'] */
-  bashBlockedPhases?: string[];
 }
 
 const DEFAULT_ALLOWED: RegExp[] = [
@@ -38,13 +35,48 @@ const DEFAULT_ALLOWED: RegExp[] = [
   /AGENTS\.md$/,    // agent instructions
 ];
 
-const DEFAULT_BASH_BLOCKED_PHASES = ['execute'];
-
 const SOURCE_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.rs',
   '.java', '.kt', '.rb', '.php', '.c', '.cpp', '.h',
   '.svelte', '.vue', '.sh',
 ]);
+
+// ---------------------------------------------------------------------------
+// Bash command classification
+// ---------------------------------------------------------------------------
+
+/** Commands the orchestrator CAN run directly (read-only + verification). */
+const SAFE_BASH_PATTERNS: RegExp[] = [
+  // Read-only / inspection
+  /^ls( |$)/,
+  /^pwd$/,
+  /^cat /,
+  /^head /,
+  /^tail /,
+  /^wc /,
+  /^tree( |$)/,
+  /^which /,
+  /^file /,
+  /^du /,
+  /^df /,
+  // Git read-only
+  /^git (status|diff|log|branch|show|fetch|remote|rev-parse|describe|tag -l)/,
+  // Build / test / lint (verification)
+  /^(npm|pnpm|yarn|bun) (test|run )/,
+  /^(npm|pnpm|yarn|bun) (ls|list|outdated|audit)/,
+  /^tsc( |$)/,
+  /^(eslint|prettier|biome) /,
+  /^cargo (test|check|clippy|build)/,
+  /^(pytest|python -m pytest)/,
+  /^go (test|vet|build)/,
+  // Node execution (for verification scripts)
+  /^node /,
+];
+
+function isSafeBash(command: string): boolean {
+  const trimmed = command.trim();
+  return SAFE_BASH_PATTERNS.some((p) => p.test(trimmed));
+}
 
 // ---------------------------------------------------------------------------
 // Messages
@@ -56,11 +88,11 @@ const WARN_MSG = (path: string) =>
 const BLOCK_MSG = (path: string) =>
   `[BLOCKED] Orchestrator cannot modify "${path}" directly. Use the Agent tool to delegate this to a sub-agent.`;
 
-const BASH_BLOCK_MSG =
-  `[BLOCKED] Orchestrator cannot run Bash directly during execute phase. Delegate this command to a sub-agent via the Agent tool. Example: Agent(subagent_type: "backend-developer" or "general-purpose", mode: "bypassPermissions", prompt: "Run: <command>")`;
+const BASH_BLOCK_MSG = (cmd: string) =>
+  `[BLOCKED] Orchestrator cannot run this command directly. Delegate to a sub-agent:\n  Agent(subagent_type: "backend-developer" or "general-purpose", mode: "bypassPermissions", prompt: "Run: ${cmd.slice(0, 80)}")`;
 
-const AGENT_REMINDER_MSG =
-  `[REMINDER] Set subagent_type on this Agent call. Check available specialist types in the Agent tool description (e.g. backend-developer, frontend-developer, Explore, etc). If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions" so the agent executes without asking the user.`;
+const AGENT_BLOCK_MSG =
+  `[BLOCKED] Set subagent_type on this Agent call. Check available specialist types in the Agent tool description (e.g. backend-developer, frontend-developer, Explore). If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions".`;
 
 // ---------------------------------------------------------------------------
 // Path checking
@@ -84,8 +116,8 @@ function isSourceFile(filePath: string): boolean {
  * Create a delegation enforcement hook.
  *
  * Three layers:
- *   1. Bash guard — blocks Bash during execute phase of active pipeline
- *   2. Agent guard — injects reminder when subagent_type is missing
+ *   1. Bash guard — blocks modifying commands, allows read-only/verification
+ *   2. Agent guard — blocks Agent calls without subagent_type
  *   3. Write/Edit guard — blocks direct file modification outside allowed paths
  *
  * @example
@@ -94,7 +126,6 @@ function isSourceFile(filePath: string): boolean {
 export function createDelegationGuard(config: DelegationConfig = {}): HookHandler {
   const allowed = config.allowedPaths ?? DEFAULT_ALLOWED;
   const level = config.enforcement ?? 'warn';
-  const bashBlockedPhases = config.bashBlockedPhases ?? DEFAULT_BASH_BLOCKED_PHASES;
 
   return {
     event: 'PreToolUse',
@@ -102,22 +133,18 @@ export function createDelegationGuard(config: DelegationConfig = {}): HookHandle
       if (level === 'off') return {};
       if (!input.toolName) return {};
 
-      // --- Layer 1: Bash guard (execute phase only) ---
+      // --- Layer 1: Bash guard (pattern-based) ---
       if (input.toolName === 'Bash') {
-        const state = readState();
-        if (state.mode && state.phase && bashBlockedPhases.includes(state.phase)) {
-          return { decision: 'block', reason: BASH_BLOCK_MSG };
-        }
-        return {};
+        const command = (input.toolInput?.['command'] as string) ?? '';
+        if (!command || isSafeBash(command)) return {};
+        return { decision: 'block', reason: BASH_BLOCK_MSG(command) };
       }
 
       // --- Layer 2: Agent guard (always enforce subagent_type) ---
       if (input.toolName === 'Agent') {
         const subagentType = input.toolInput?.['subagent_type'] as string | undefined;
-        process.stderr.write(`[harness:delegation] Agent call detected — subagent_type="${subagentType ?? '(none)'}"\n`);
         if (!subagentType || subagentType === '') {
-          process.stderr.write(`[harness:delegation] BLOCKING — no subagent_type\n`);
-          return { decision: 'block', reason: AGENT_REMINDER_MSG };
+          return { decision: 'block', reason: AGENT_BLOCK_MSG };
         }
         return {};
       }
@@ -131,14 +158,12 @@ export function createDelegationGuard(config: DelegationConfig = {}): HookHandle
 
       if (!filePath || isAllowed(filePath, allowed)) return {};
 
-      // Source files get stronger messaging
       const msg = isSourceFile(filePath) ? BLOCK_MSG(filePath) : WARN_MSG(filePath);
 
       if (level === 'strict') {
         return { decision: 'block', reason: msg };
       }
 
-      // Warn mode: allow but inject reminder
       return { additionalContext: msg };
     },
   };
