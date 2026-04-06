@@ -81,9 +81,13 @@ export function createDelegationGuard(config = {}) {
             }
             // --- Layer 2: Agent guard (missing subagent_type) ---
             if (input.toolName === 'Agent') {
+                const state = readState();
+                // Only enforce during active pipeline mode
+                if (!state.mode)
+                    return {};
                 const subagentType = input.toolInput?.['subagent_type'];
                 if (!subagentType || subagentType === '') {
-                    return { additionalContext: AGENT_REMINDER_MSG };
+                    return { decision: 'block', reason: AGENT_REMINDER_MSG };
                 }
                 return {};
             }
