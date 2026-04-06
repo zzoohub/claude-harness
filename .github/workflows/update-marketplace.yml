@@ -1,0 +1,34 @@
+name: Update marketplace SHA
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  update-sha:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugins repo
+        uses: actions/checkout@v4
+        with:
+          repository: zzoohub/claude-plugins
+          token: ${{ secrets.PLUGINS_PAT }}
+
+      - name: Update SHA in marketplace.json
+        env:
+          HARNESS_SHA: ${{ github.sha }}
+        run: |
+          jq --arg sha "$HARNESS_SHA" \
+            '(.plugins[] | select(.name == "claude-harness") | .source.sha) = $sha' \
+            .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+
+      - name: Commit and push
+        env:
+          HARNESS_SHA: ${{ github.sha }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .claude-plugin/marketplace.json
+          git diff --cached --quiet && exit 0
+          git commit -m "bump claude-harness to ${HARNESS_SHA}"
+          git push
