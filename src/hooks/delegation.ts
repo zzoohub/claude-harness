@@ -111,11 +111,8 @@ export function createDelegationGuard(config: DelegationConfig = {}): HookHandle
         return {};
       }
 
-      // --- Layer 2: Agent guard (missing subagent_type) ---
+      // --- Layer 2: Agent guard (always enforce subagent_type) ---
       if (input.toolName === 'Agent') {
-        const state = readState();
-        // Only enforce during active pipeline mode
-        if (!state.mode) return {};
         const subagentType = input.toolInput?.['subagent_type'] as string | undefined;
         if (!subagentType || subagentType === '') {
           return { decision: 'block', reason: AGENT_REMINDER_MSG };
