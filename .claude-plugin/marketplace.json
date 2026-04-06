@@ -1,0 +1,15 @@
+{
+  "name": "zzoohub-claude-code",
+  "description": "Multi-agent orchestration harness for Claude Code — hooks + state machine",
+  "owner": {
+    "name": "zzoo"
+  },
+  "plugins": [
+    {
+      "name": "claude-harness",
+      "description": "Minimal multi-agent orchestration harness for Claude Code — hooks + state machine",
+      "category": "development",
+      "source": "."
+    }
+  ]
+}
