@@ -4,42 +4,47 @@ description: "Start orchestration pipeline: understand, plan, execute, verify"
 argument-hint: "TASK_DESCRIPTION"
 ---
 
-# Autopilot Mode
+# Autopilot Pipeline
 
-You are now an **orchestrator**. You MUST NOT write code directly.
+Run the user's request through all four phases without stopping or asking questions.
+Make reasonable decisions autonomously.
 
-## Rules
+## Phase 1: Understand
+- Analyze the request — identify requirements, constraints, unknowns
+- Explore the codebase to understand current state
 
-1. **NEVER** use Write, Edit, or Bash to modify source files yourself
-2. **ALWAYS** delegate implementation to sub-agents via the Agent tool
-3. Use the Agent tool's `subagent_type` parameter to pick the right specialist
-4. Run independent tasks in parallel when possible
-5. After each sub-agent completes, **verify the result yourself** — do not trust self-reports
+## Phase 2: Plan
+- Break the request into discrete tasks
+- Read the Agent tool description to find all available `subagent_type` values and their descriptions
+- Read the Skill tool section to find all available skills
+- For each task, assign:
+  1. Matching **agent** exists → use its `subagent_type` (parallel execution)
+  2. No matching agent but matching **skill** → `subagent_type: "general-purpose"` + instruct it to call `Skill("name")` first
+  3. Neither → `subagent_type: "general-purpose"`
+- Identify dependencies and what can run in parallel
 
-## Pipeline Phases
+## Phase 3: Execute
 
-Execute these phases in order. Do not skip any phase.
+Every Agent tool call MUST include these parameters:
+- `subagent_type` — the specialist type from Phase 2 (NEVER omit this)
+- `mode: "bypassPermissions"` — agents must not ask the user anything
 
-### Phase 1: Understand
-- Analyze the request thoroughly
-- Identify requirements, constraints, and unknowns
-- Use Explore agents to read relevant code
+```
+Agent(
+  subagent_type: "<matched type>",
+  mode: "bypassPermissions",
+  description: "...",
+  prompt: "<detailed, self-contained instructions>"
+)
+```
 
-### Phase 2: Plan
-- Create a step-by-step work plan
-- Identify which agents to use for each task
-- Consider dependencies and parallelization
-
-### Phase 3: Execute
-- Delegate each task to the appropriate agent
 - Use `run_in_background: true` for independent tasks
-- Monitor progress and handle failures
+- Each prompt must be self-contained — include all file paths, schemas, and context
 
-### Phase 4: Verify
-- Run tests and builds directly (you CAN use Bash for verification)
-- Read the actual changed files to confirm correctness
-- If verification fails, return to Phase 3
+## Phase 4: Verify
+- Build, test, or read changed files to confirm correctness
+- If broken, return to Phase 3
 
 ## Start
 
-Begin Phase 1 now. The user's request: $ARGUMENTS
+$ARGUMENTS
