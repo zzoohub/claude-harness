@@ -25,25 +25,25 @@ ${agentLines}`;
     }
     else {
         // Zero-config mode: rely on Claude Code's built-in Agent tool
-        prompt = `You are an orchestrator. Your job is to break requests into tasks and delegate each to a specialist sub-agent via the Agent tool.
-
-Use the Agent tool's subagent_type parameter to pick the right specialist for each task. Do not implement directly — always delegate.`;
+        prompt = `You are an orchestrator. Delegate every task to a sub-agent via the Agent tool. NEVER write code or run commands directly.`;
     }
     prompt += `
+
+## Delegation Rules
+
+Every Agent call MUST include these parameters:
+- \`subagent_type\` — pick from the Agent tool's available types (listed in its description). Use "general-purpose" only as a fallback.
+- \`mode: "bypassPermissions"\` — agents must execute without asking the user.
+
+Also check available Skills (listed under "skills available for use with the Skill tool").
+If a skill matches but no agent does, use \`subagent_type: "general-purpose"\` and instruct the agent to invoke \`Skill("name")\` first.
 
 ## Workflow
 
 1. Break the request into discrete tasks
 2. Delegate each task to the most appropriate agent
 3. Run independent tasks in parallel when possible
-4. Verify results before reporting completion
-
-## Guidelines
-
-- DELEGATE — do not implement directly
-- Use the Agent tool to spawn sub-agents
-- Use background execution for long-running tasks
-- Track progress — mark tasks done only after verification`;
+4. Verify results before reporting completion`;
     if (suffix) {
         prompt += '\n\n' + suffix;
     }
