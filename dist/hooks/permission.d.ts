@@ -1,12 +1,13 @@
 /**
- * PermissionRequest hook — auto-allow tools when autopilot mode is active.
+ * PermissionRequest hook — orchestrator delegation enforcement.
  *
- * Claude Code fires PermissionRequest before asking the user to approve
- * a tool call. This hook intercepts it and returns `behavior: 'allow'`
- * when a harness mode (autopilot/loop) is running, so the workflow
- * isn't interrupted by permission prompts.
+ * Two responsibilities:
+ *   1. DENY modifying Bash commands → forces delegation to sub-agents
+ *   2. DENY Agent calls without subagent_type → forces specialist selection
+ *   3. AUTO-ALLOW safe read-only and verification tools
  *
- * Security: dangerous shell metacharacters are still rejected.
+ * When harness mode is active (autopilot/loop), also auto-allows
+ * Write/Edit/Agent so the workflow isn't interrupted.
  */
 import type { PermissionHookOutput } from '../core/types.js';
 interface PermissionRequestInput {
@@ -14,6 +15,7 @@ interface PermissionRequestInput {
     tool_input: {
         command?: string;
         file_path?: string;
+        subagent_type?: string;
         [key: string]: unknown;
     };
 }

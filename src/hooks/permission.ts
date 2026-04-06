@@ -1,12 +1,13 @@
 /**
- * PermissionRequest hook — auto-allow tools when autopilot mode is active.
+ * PermissionRequest hook — orchestrator delegation enforcement.
  *
- * Claude Code fires PermissionRequest before asking the user to approve
- * a tool call. This hook intercepts it and returns `behavior: 'allow'`
- * when a harness mode (autopilot/loop) is running, so the workflow
- * isn't interrupted by permission prompts.
+ * Two responsibilities:
+ *   1. DENY modifying Bash commands → forces delegation to sub-agents
+ *   2. DENY Agent calls without subagent_type → forces specialist selection
+ *   3. AUTO-ALLOW safe read-only and verification tools
  *
- * Security: dangerous shell metacharacters are still rejected.
+ * When harness mode is active (autopilot/loop), also auto-allows
+ * Write/Edit/Agent so the workflow isn't interrupted.
  */
 
 import { isActive, readState } from '../core/state.js';
@@ -21,40 +22,51 @@ const HEREDOC_PATTERN = /<<[-~]?\s*['"]?\w+['"]?/;
 // Safe heredoc base commands (e.g. git commit with heredoc message)
 const SAFE_HEREDOC_BASES = [/^git commit\b/, /^git tag\b/];
 
-// Commands that are always safe to auto-allow
-const SAFE_BASH_PATTERNS = [
-  /^git (status|diff|log|branch|show|fetch|rev-parse)/,
-  /^npm (test|run (test|lint|build|check|typecheck))/,
-  /^pnpm (test|run (test|lint|build|check|typecheck))/,
-  /^yarn (test|run (test|lint|build|check|typecheck))/,
-  /^tsc( |$)/,
-  /^eslint /,
-  /^prettier /,
-  /^cargo (test|check|clippy|build)/,
-  /^pytest/,
-  /^python -m pytest/,
+/**
+ * Commands the orchestrator CAN run directly.
+ * Everything else must be delegated to a sub-agent.
+ */
+const ORCHESTRATOR_SAFE_BASH = [
+  // Read-only / inspection
   /^ls( |$)/,
+  /^pwd$/,
+  /^cat /,
+  /^head /,
+  /^tail /,
+  /^wc /,
+  /^tree( |$)/,
+  /^which /,
+  /^file /,
+  // Git read-only
+  /^git (status|diff|log|branch|show|fetch|remote|rev-parse|describe|tag -l)/,
+  // Build / test / lint (verification)
+  /^(npm|pnpm|yarn|bun) (test|run )/,
+  /^(npm|pnpm|yarn|bun) (ls|list|outdated|audit)/,
+  /^tsc( |$)/,
+  /^(eslint|prettier|biome) /,
+  /^cargo (test|check|clippy|build)/,
+  /^(pytest|python -m pytest)/,
+  /^go (test|vet|build)/,
+  // Node execution (verification scripts)
   /^node /,
-  /^npx /,
-  /^mkdir /,
 ];
 
 interface PermissionRequestInput {
   tool_name: string;
-  tool_input: { command?: string; file_path?: string; [key: string]: unknown };
+  tool_input: { command?: string; file_path?: string; subagent_type?: string; [key: string]: unknown };
 }
 
-function isSafeBashCommand(command: string): boolean {
+function isOrchestratorSafeBash(command: string): boolean {
   const trimmed = command.trim();
+  // Allow safe heredoc commands (git commit with message)
   if (DANGEROUS_SHELL_CHARS.test(trimmed)) {
-    // Allow heredoc commands with safe base (e.g. git commit -m "$(cat <<'EOF' ... )")
     if (trimmed.includes('\n') && HEREDOC_PATTERN.test(trimmed)) {
       const firstLine = trimmed.split('\n')[0]!.trim();
       return SAFE_HEREDOC_BASES.some((p) => p.test(firstLine));
     }
     return false;
   }
-  return SAFE_BASH_PATTERNS.some((p) => p.test(trimmed));
+  return ORCHESTRATOR_SAFE_BASH.some((p) => p.test(trimmed));
 }
 
 function allow(reason: string): PermissionHookOutput {
@@ -67,6 +79,16 @@ function allow(reason: string): PermissionHookOutput {
   };
 }
 
+function deny(reason: string): PermissionHookOutput {
+  return {
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: 'PermissionRequest',
+      decision: { behavior: 'deny', reason },
+    },
+  };
+}
+
 function passthrough(): PermissionHookOutput {
   return { continue: true };
 }
@@ -75,68 +97,62 @@ export function handlePermissionRequest(input: PermissionRequestInput): Permissi
   const toolName = input.tool_name.replace(/^proxy_/, '');
   const command = input.tool_input.command?.trim();
 
-  // Always auto-allow safe bash commands regardless of mode
-  if (toolName === 'Bash' && command && isSafeBashCommand(command)) {
-    return allow('Safe read-only or build command');
+  // --- Bash: allow safe, deny modifying ---
+  if (toolName === 'Bash' && command) {
+    if (isOrchestratorSafeBash(command)) {
+      return allow('Safe read-only or verification command');
+    }
+    return deny(
+      `[DELEGATION REQUIRED] Orchestrator cannot run this command directly. ` +
+      `Delegate to a sub-agent: Agent(subagent_type: "backend-developer" or "general-purpose", ` +
+      `mode: "bypassPermissions", prompt: "Run: ${command.slice(0, 80)}")`
+    );
   }
 
-  // If no harness mode is active, defer to normal permission flow
+  // --- Agent: deny without subagent_type ---
+  if (toolName === 'Agent') {
+    const subagentType = input.tool_input.subagent_type;
+    if (!subagentType || subagentType === '') {
+      return deny(
+        `[DELEGATION REQUIRED] Set subagent_type on this Agent call. ` +
+        `Check available types in the Agent tool description (e.g. backend-developer, frontend-developer, Explore). ` +
+        `If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions".`
+      );
+    }
+  }
+
+  // --- Harness mode active: auto-allow remaining tools ---
   if (!isActive()) {
     return passthrough();
   }
 
-  // --- Harness mode is active (autopilot/loop) ---
-
   const state = readState();
   const mode = state.mode;
 
-  // Auto-allow Read — always safe
-  if (toolName === 'Read') {
-    return allow(`${mode} mode: auto-allow Read`);
+  // Auto-allow read-only tools
+  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
+    return allow(`${mode} mode: auto-allow ${toolName}`);
   }
 
-  // Auto-allow Write/Edit — needed for code generation
+  // Auto-allow write tools (sub-agents need these)
   if (toolName === 'Write' || toolName === 'Edit' || toolName === 'NotebookEdit') {
     return allow(`${mode} mode: auto-allow ${toolName}`);
   }
 
-  // Auto-allow Glob/Grep — read-only search tools
-  if (toolName === 'Glob' || toolName === 'Grep') {
-    return allow(`${mode} mode: auto-allow ${toolName}`);
-  }
-
-  // Auto-allow Agent — orchestrator needs to spawn sub-agents
+  // Auto-allow Agent (already passed subagent_type check above)
   if (toolName === 'Agent') {
     return allow(`${mode} mode: auto-allow Agent`);
   }
 
-  // Auto-allow WebSearch/WebFetch — research tools
+  // Auto-allow research tools
   if (toolName === 'WebSearch' || toolName === 'WebFetch') {
     return allow(`${mode} mode: auto-allow ${toolName}`);
   }
 
-  // Auto-allow Task tools — orchestrator tracks progress
+  // Auto-allow Task tools
   if (toolName.startsWith('Task')) {
     return allow(`${mode} mode: auto-allow ${toolName}`);
   }
 
-  // Bash: allow non-dangerous commands during active mode
-  if (toolName === 'Bash' && command) {
-    // Reject commands with shell metacharacters (injection risk)
-    if (DANGEROUS_SHELL_CHARS.test(command)) {
-      // But allow heredocs with safe base commands
-      if (command.includes('\n') && HEREDOC_PATTERN.test(command)) {
-        const firstLine = command.split('\n')[0]!.trim();
-        if (SAFE_HEREDOC_BASES.some((p) => p.test(firstLine))) {
-          return allow(`${mode} mode: safe heredoc command`);
-        }
-      }
-      // Let Claude Code ask the user for dangerous shell commands
-      return passthrough();
-    }
-    return allow(`${mode} mode: auto-allow Bash`);
-  }
-
-  // Everything else: defer to normal permission flow
   return passthrough();
 }
