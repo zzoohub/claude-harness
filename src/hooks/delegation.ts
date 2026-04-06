@@ -114,7 +114,9 @@ export function createDelegationGuard(config: DelegationConfig = {}): HookHandle
       // --- Layer 2: Agent guard (always enforce subagent_type) ---
       if (input.toolName === 'Agent') {
         const subagentType = input.toolInput?.['subagent_type'] as string | undefined;
+        process.stderr.write(`[harness:delegation] Agent call detected — subagent_type="${subagentType ?? '(none)'}"\n`);
         if (!subagentType || subagentType === '') {
+          process.stderr.write(`[harness:delegation] BLOCKING — no subagent_type\n`);
           return { decision: 'block', reason: AGENT_REMINDER_MSG };
         }
         return {};

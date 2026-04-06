@@ -63,6 +63,10 @@ async function main() {
     // Dispatch through hook engine
     const input = parseInput(raw, event);
     const output = await harness.hooks.process(input);
+    if (event === 'PreToolUse' && input.toolName === 'Agent') {
+        process.stderr.write(`[harness:bridge] PreToolUse Agent — input keys: ${JSON.stringify(Object.keys(input.toolInput ?? {}))}\n`);
+        process.stderr.write(`[harness:bridge] output: ${JSON.stringify(output)}\n`);
+    }
     process.stdout.write(JSON.stringify(output));
 }
 // Run when executed directly (not imported)
