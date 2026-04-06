@@ -106,6 +106,8 @@ import { createContextLoader } from './hooks/context.js';
 import { createVerificationHook } from './hooks/verification.js';
 import { createRecoveryHook } from './hooks/recovery.js';
 import { createMemoryHook, createMemoryCapture } from './hooks/memory.js';
+import { createKeywordDetector } from './hooks/keywords.js';
+import { createLoopMode, createPipelineMode } from './hooks/modes.js';
 
 export interface Harness {
   registry: AgentRegistry;
@@ -126,9 +128,11 @@ export interface Harness {
 export function createHarness(config: HarnessConfig): Harness {
   const resolved = loadConfig(config);
 
-  // 1. Agent registry
+  // 1. Agent registry (optional — zero-config works without agents)
   const registry = new AgentRegistry();
-  registry.registerAll(resolved.agents);
+  if (resolved.agents) {
+    registry.registerAll(resolved.agents);
+  }
 
   // 2. System prompt
   const systemPrompt =
@@ -142,6 +146,12 @@ export function createHarness(config: HarnessConfig): Harness {
   hooks.register(createContextLoader());
   hooks.register(createSessionResume());
   hooks.register(createMemoryHook());
+
+  // UserPromptSubmit: built-in modes (loop + pipeline) + keyword detection
+  const loop = createLoopMode();
+  const pipeline = createPipelineMode();
+  hooks.register(createKeywordDetector([...loop.keywords, ...pipeline.keywords]));
+  for (const h of [...loop.hooks, ...pipeline.hooks]) hooks.register(h);
 
   // UserPromptSubmit: inject active mode context
   hooks.register(createPromptEnhancer());

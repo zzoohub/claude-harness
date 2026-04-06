@@ -55,7 +55,7 @@ export function resolvePrompts(agents, basePath) {
 function merge(base, overlay, basePath) {
     if (!overlay)
         return base;
-    const agents = { ...base.agents, ...overlay.agents };
+    const agents = { ...(base.agents ?? {}), ...(overlay.agents ?? {}) };
     if (basePath && overlay.agents)
         resolvePrompts(agents, basePath);
     const suffix = overlay.systemPromptSuffix !== undefined ? overlay.systemPromptSuffix : base.systemPromptSuffix;

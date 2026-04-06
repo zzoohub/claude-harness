@@ -48,7 +48,7 @@ export interface HookHandler {
 }
 /** Programmatic config passed to createHarness(). */
 export interface HarnessConfig {
-    agents: Record<string, Agent>;
+    agents?: Record<string, Agent>;
     hooks?: HookHandler[];
     /** Replace the auto-generated system prompt entirely. */
     systemPrompt?: string;

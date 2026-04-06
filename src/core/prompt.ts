@@ -15,18 +15,30 @@ export function buildSystemPrompt(
   const agents = registry.getAll();
   const count = Object.keys(agents).length;
 
-  const agentLines = Object.entries(agents)
-    .map(([name, a]) => {
-      const tag = a.model ? ` (${a.model})` : '';
-      return `- **${name}**${tag}: ${a.description}`;
-    })
-    .join('\n');
+  let prompt: string;
 
-  let prompt = `You are an orchestrator coordinating ${count} specialized sub-agents.
+  if (count > 0) {
+    // Power-user mode: enumerate explicitly defined agents
+    const agentLines = Object.entries(agents)
+      .map(([name, a]) => {
+        const tag = a.model ? ` (${a.model})` : '';
+        return `- **${name}**${tag}: ${a.description}`;
+      })
+      .join('\n');
+
+    prompt = `You are an orchestrator coordinating ${count} specialized sub-agents.
 
 ## Available Agents
 
-${agentLines}
+${agentLines}`;
+  } else {
+    // Zero-config mode: rely on Claude Code's built-in Agent tool
+    prompt = `You are an orchestrator. Your job is to break requests into tasks and delegate each to a specialist sub-agent via the Agent tool.
+
+Use the Agent tool's subagent_type parameter to pick the right specialist for each task. Do not implement directly — always delegate.`;
+  }
+
+  prompt += `
 
 ## Workflow
 
@@ -37,7 +49,7 @@ ${agentLines}
 
 ## Guidelines
 
-- Prefer delegation over doing everything yourself
+- DELEGATE — do not implement directly
 - Use the Agent tool to spawn sub-agents
 - Use background execution for long-running tasks
 - Track progress — mark tasks done only after verification`;

@@ -64,7 +64,7 @@ export function resolvePrompts(
 function merge(base: HarnessConfig, overlay: FileConfig | null, basePath?: string): HarnessConfig {
   if (!overlay) return base;
 
-  const agents = { ...base.agents, ...overlay.agents };
+  const agents = { ...(base.agents ?? {}), ...(overlay.agents ?? {}) };
   if (basePath && overlay.agents) resolvePrompts(agents, basePath);
 
   const suffix = overlay.systemPromptSuffix !== undefined ? overlay.systemPromptSuffix : base.systemPromptSuffix;

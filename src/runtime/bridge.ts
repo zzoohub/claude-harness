@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 
   // Load project config (.mjs > .json) and create harness
   const fileCfg = await loadProjectConfig();
-  const harness = createHarness({ agents: fileCfg?.agents ?? {} });
+  const harness = createHarness(fileCfg ?? {});
 
   // Dispatch through hook engine
   const input = parseInput(raw, event);
