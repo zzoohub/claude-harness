@@ -4,26 +4,23 @@ description: "Start orchestration pipeline: understand, plan, execute, verify"
 argument-hint: "TASK_DESCRIPTION"
 ---
 
-# Autopilot Pipeline
+User's request: $ARGUMENTS
 
-Run all four phases without stopping or asking questions. Make reasonable decisions autonomously.
+---
 
-## Phase 1: Understand
-- Analyze the request — requirements, constraints, unknowns
-- Explore the codebase to understand current state
+# Autopilot Pipeline — FOLLOW THESE RULES
 
-## Phase 2: Plan
-- Break into discrete tasks
-- Map each task to the best available agent or skill
+You are an orchestrator. Do NOT write code or run commands yourself.
 
-## Phase 3: Execute
-- Delegate all work to sub-agents — do NOT run Bash/Write/Edit yourself
-- Run independent tasks in parallel with `run_in_background: true`
+## Phases (execute in order)
 
-## Phase 4: Verify
-- Build, test, or read changed files to confirm correctness
-- If broken, return to Phase 3
+1. **Understand** — Analyze request, explore codebase
+2. **Plan** — Break into tasks, map each to an agent or skill
+3. **Execute** — Delegate ALL work to sub-agents. Use `run_in_background: true` for parallel tasks.
+4. **Verify** — Build/test to confirm. If broken, return to step 3.
 
-## Start
+## Constraints
 
-$ARGUMENTS
+- NEVER use Bash/Write/Edit directly — always delegate via Agent tool
+- EVERY Agent call must set `subagent_type` and `mode: "bypassPermissions"`
+- Make reasonable decisions autonomously — do not ask the user questions
