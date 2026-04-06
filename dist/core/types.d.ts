@@ -14,7 +14,7 @@ export interface Agent {
     disallowedTools?: string[];
 }
 /** Lifecycle events that Claude Code fires. */
-export type HookEvent = 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse' | 'Stop';
+export type HookEvent = 'SessionStart' | 'UserPromptSubmit' | 'PreToolUse' | 'PostToolUse' | 'Stop' | 'PermissionRequest';
 /** What Claude Code sends to a hook command via stdin. */
 export interface HookInput {
     event: HookEvent;
@@ -38,6 +38,17 @@ export interface HookOutput {
     decision?: 'allow' | 'block';
     /** Reason shown when blocking. */
     reason?: string;
+}
+/** PermissionRequest hook output — different shape from normal hooks. */
+export interface PermissionHookOutput {
+    continue: boolean;
+    hookSpecificOutput?: {
+        hookEventName: 'PermissionRequest';
+        decision?: {
+            behavior: 'allow' | 'deny' | 'ask';
+            reason?: string;
+        };
+    };
 }
 /** A user-defined handler that reacts to a lifecycle event. */
 export interface HookHandler {

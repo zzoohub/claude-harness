@@ -12,6 +12,7 @@
  */
 import { createHarness } from '../index.js';
 import { loadProjectConfig } from '../core/config.js';
+import { handlePermissionRequest } from '../hooks/permission.js';
 // ---------------------------------------------------------------------------
 // stdin / stdout helpers
 // ---------------------------------------------------------------------------
@@ -47,6 +48,13 @@ async function main() {
     const raw = await readStdin();
     if (!raw.trim()) {
         process.stdout.write('{}');
+        return;
+    }
+    // PermissionRequest has a different output format — handle separately
+    if (event === 'PermissionRequest') {
+        const data = JSON.parse(raw);
+        const output = handlePermissionRequest(data);
+        process.stdout.write(JSON.stringify(output));
         return;
     }
     // Load project config (.mjs > .json) and create harness

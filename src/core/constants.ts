@@ -18,6 +18,7 @@ export const EVENT = {
   PreToolUse: 'PreToolUse',
   PostToolUse: 'PostToolUse',
   Stop: 'Stop',
+  PermissionRequest: 'PermissionRequest',
 } as const;
 
 /** Tools that modify files (used by delegation guard). */

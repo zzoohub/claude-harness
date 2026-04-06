@@ -29,7 +29,8 @@ export type HookEvent =
   | 'UserPromptSubmit'
   | 'PreToolUse'
   | 'PostToolUse'
-  | 'Stop';
+  | 'Stop'
+  | 'PermissionRequest';
 
 /** What Claude Code sends to a hook command via stdin. */
 export interface HookInput {
@@ -50,6 +51,18 @@ export interface HookOutput {
   decision?: 'allow' | 'block';
   /** Reason shown when blocking. */
   reason?: string;
+}
+
+/** PermissionRequest hook output — different shape from normal hooks. */
+export interface PermissionHookOutput {
+  continue: boolean;
+  hookSpecificOutput?: {
+    hookEventName: 'PermissionRequest';
+    decision?: {
+      behavior: 'allow' | 'deny' | 'ask';
+      reason?: string;
+    };
+  };
 }
 
 /** A user-defined handler that reacts to a lifecycle event. */

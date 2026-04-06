@@ -48,6 +48,7 @@ export { createKeywordDetector } from './hooks/keywords.js';
 export { createContextLoader, findContextFiles, loadContextFiles } from './hooks/context.js';
 export { createVerificationHook } from './hooks/verification.js';
 export { createRecoveryHook } from './hooks/recovery.js';
+export { handlePermissionRequest } from './hooks/permission.js';
 export { createLoopMode, createPipelineMode, } from './hooks/modes.js';
 export { readMemory, addPriority, addWorking, addManual, pruneWorking, clearMemory, formatMemory, createMemoryHook, createMemoryCapture, } from './hooks/memory.js';
 // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ export declare const EVENT: {
     readonly PreToolUse: "PreToolUse";
     readonly PostToolUse: "PostToolUse";
     readonly Stop: "Stop";
+    readonly PermissionRequest: "PermissionRequest";
 };
 /** Tools that modify files (used by delegation guard). */
 export declare const WRITE_TOOLS: readonly ["Write", "Edit", "write", "edit", "NotebookEdit"];
