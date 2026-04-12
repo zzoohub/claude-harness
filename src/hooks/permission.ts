@@ -47,7 +47,7 @@ export function handlePermissionRequest(input: PermissionRequestInput): Permissi
     return allow('harness: auto-allow Bash for sub-agent execution');
   }
 
-  // --- Agent: deny without subagent_type ---
+  // --- Agent: deny without subagent_type, allow otherwise ---
   if (toolName === 'Agent') {
     const subagentType = input.tool_input.subagent_type;
     if (!subagentType || subagentType === '') {
@@ -57,27 +57,18 @@ export function handlePermissionRequest(input: PermissionRequestInput): Permissi
         `If no specialist matches, use "general-purpose". Also set mode: "bypassPermissions".`
       );
     }
+    return allow('harness: auto-allow Agent');
   }
 
   // --- Auto-allow orchestration toolkit (harness is installed = orchestration mode) ---
 
-  // Read-only tools — always safe
-  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
-    return allow(`harness: auto-allow ${toolName}`);
-  }
+  const AUTO_ALLOWED = new Set([
+    'Read', 'Glob', 'Grep',           // Read-only — always safe
+    'Write', 'Edit', 'NotebookEdit',   // Write — sub-agents need these
+    'WebSearch', 'WebFetch',           // Research tools
+  ]);
 
-  // Write tools — sub-agents need these to implement
-  if (toolName === 'Write' || toolName === 'Edit' || toolName === 'NotebookEdit') {
-    return allow(`harness: auto-allow ${toolName}`);
-  }
-
-  // Agent — already passed subagent_type check above
-  if (toolName === 'Agent') {
-    return allow(`harness: auto-allow Agent`);
-  }
-
-  // Research tools
-  if (toolName === 'WebSearch' || toolName === 'WebFetch') {
+  if (AUTO_ALLOWED.has(toolName)) {
     return allow(`harness: auto-allow ${toolName}`);
   }
 
