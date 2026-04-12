@@ -9,10 +9,11 @@
 import type { HookHandler, HookInput, HookOutput } from './types.js';
 
 export class HookEngine {
-  private handlers: HookHandler[] = [];
+  private handlers: Array<{ handler: HookHandler; matcherRe: RegExp | null }> = [];
 
   register(handler: HookHandler): void {
-    this.handlers.push(handler);
+    const matcherRe = handler.matcher ? new RegExp(handler.matcher) : null;
+    this.handlers.push({ handler, matcherRe });
   }
 
   registerAll(handlers: HookHandler[]): void {
@@ -21,11 +22,11 @@ export class HookEngine {
 
   /** Run all matching handlers and merge their outputs. */
   async process(input: HookInput): Promise<HookOutput> {
-    const matching = this.handlers.filter((h) => this.matches(h, input));
+    const matching = this.handlers.filter((entry) => this.matches(entry, input));
 
     let merged: HookOutput = {};
 
-    for (const handler of matching) {
+    for (const { handler } of matching) {
       const result = await handler.handle(input);
       merged = mergeOutputs(merged, result);
 
@@ -36,16 +37,19 @@ export class HookEngine {
     return merged;
   }
 
-  private matches(handler: HookHandler, input: HookInput): boolean {
-    if (handler.event !== input.event) return false;
+  private matches(
+    entry: { handler: HookHandler; matcherRe: RegExp | null },
+    input: HookInput,
+  ): boolean {
+    if (entry.handler.event !== input.event) return false;
 
     // If handler has a matcher, test it against toolName
-    if (handler.matcher && input.toolName) {
-      return new RegExp(handler.matcher).test(input.toolName);
+    if (entry.matcherRe && input.toolName) {
+      return entry.matcherRe.test(input.toolName);
     }
 
     // No matcher = match all events of this type
-    return !handler.matcher;
+    return !entry.matcherRe;
   }
 }
 
