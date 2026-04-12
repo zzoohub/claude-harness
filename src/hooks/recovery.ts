@@ -139,17 +139,23 @@ export function createRecoveryHook(config: RecoveryConfig = {}): HookHandler {
       if (!output) return {};
 
       const errorType = detectError(output, input.toolName);
+      const state = readState();
 
-      // No error → reset counter
+      // No error → reset counter (only if there's something to reset)
       if (!errorType || disabled.has(errorType)) {
-        resetRecoveryCounter();
+        if (state.mode && state.data['_recoveryCount']) {
+          updateData({ _recoveryCount: 0 });
+        }
         return {};
       }
 
       // Error detected → increment counter
-      const count = incrementRecoveryCounter();
+      const prev = (state.data['_recoveryCount'] as number) ?? 0;
+      const count = prev + 1;
+      updateData({ _recoveryCount: count });
+
       if (count > maxRecoveries) {
-        resetRecoveryCounter();
+        updateData({ _recoveryCount: 0 });
         return {
           additionalContext:
             `[RECOVERY LIMIT] ${maxRecoveries} consecutive errors detected. `
@@ -161,26 +167,4 @@ export function createRecoveryHook(config: RecoveryConfig = {}): HookHandler {
       return { additionalContext: message };
     },
   };
-}
-
-// ---------------------------------------------------------------------------
-// Counter (persisted in state machine data)
-// ---------------------------------------------------------------------------
-
-function getRecoveryCounter(): number {
-  const state = readState();
-  return (state.data['_recoveryCount'] as number) ?? 0;
-}
-
-function incrementRecoveryCounter(): number {
-  const next = getRecoveryCounter() + 1;
-  updateData({ _recoveryCount: next });
-  return next;
-}
-
-function resetRecoveryCounter(): void {
-  const state = readState();
-  if (state.mode && state.data['_recoveryCount'] !== undefined) {
-    updateData({ _recoveryCount: 0 });
-  }
 }

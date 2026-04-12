@@ -32,7 +32,7 @@ export function createStopGuard(
 
       // Allow stop if we're at the last phase (work is likely done)
       // Block if there are more phases to go
-      if (isLastPhase()) return {};
+      if (isLastPhase(state)) return {};
 
       const reason = modeMessages?.[state.mode] ?? defaultMsg;
       return { decision: 'block', reason };

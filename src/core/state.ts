@@ -19,6 +19,10 @@
  *   Hook call 4: deploy/verify → endMode()               → idle
  *
  * Persistence: .harness/state.json (one file, read/written atomically)
+ *
+ * Performance note:
+ *   Functions accepting a `state` parameter avoid redundant disk reads.
+ *   The parameter-less overloads read from disk on each call (convenience API).
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
@@ -85,8 +89,9 @@ export function clearState(): void {
 // ---------------------------------------------------------------------------
 
 /** Is any mode active? */
-export function isActive(): boolean {
-  return readState().mode !== null;
+export function isActive(state?: SessionState): boolean {
+  const s = state ?? readState();
+  return s.mode !== null;
 }
 
 /**
@@ -188,10 +193,10 @@ function nextPhase(state: SessionState): string | null {
 }
 
 /** Is the current phase the last one? */
-export function isLastPhase(): boolean {
-  const state = readState();
-  if (!state.phase || state.phases.length === 0) return true;
-  return state.phases.indexOf(state.phase) === state.phases.length - 1;
+export function isLastPhase(state?: SessionState): boolean {
+  const s = state ?? readState();
+  if (!s.phase || s.phases.length === 0) return true;
+  return s.phases.indexOf(s.phase) === s.phases.length - 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,8 +211,9 @@ export function updateData(patch: Record<string, unknown>): void {
 }
 
 /** Read a single value from mode data. */
-export function getData<T = unknown>(key: string): T | undefined {
-  return readState().data[key] as T | undefined;
+export function getData<T = unknown>(key: string, state?: SessionState): T | undefined {
+  const s = state ?? readState();
+  return s.data[key] as T | undefined;
 }
 
 // ---------------------------------------------------------------------------
