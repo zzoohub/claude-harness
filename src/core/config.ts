@@ -97,15 +97,14 @@ export async function loadProjectConfig(): Promise<FileConfig | null> {
 }
 
 /**
- * Load and merge all config sources.
- *
- * Merge order: programmatic (base) ← user ← project
+ * Merge all config layers: programmatic (base) ← user ← project.
  * Later sources overwrite earlier ones for overlapping keys.
- * Programmatic keys that aren't in file configs survive untouched.
  */
-export function loadConfig(programmatic: HarnessConfig): HarnessConfig {
+function mergeAll(
+  programmatic: HarnessConfig,
+  projCfg: FileConfig | null,
+): HarnessConfig {
   const userCfg = loadJsonFile(PATHS.userConfig);
-  const projCfg = loadJsonFile(PATHS.projectConfig);
 
   let config = { ...programmatic };
   config = merge(config, userCfg, dirname(PATHS.userConfig));
@@ -113,13 +112,12 @@ export function loadConfig(programmatic: HarnessConfig): HarnessConfig {
   return config;
 }
 
+/** Load and merge all config sources (sync — JSON only). */
+export function loadConfig(programmatic: HarnessConfig): HarnessConfig {
+  return mergeAll(programmatic, loadJsonFile(PATHS.projectConfig));
+}
+
 /** Async variant — resolves .mjs project configs before merging. */
 export async function loadConfigAsync(programmatic: HarnessConfig): Promise<HarnessConfig> {
-  const userCfg = loadJsonFile(PATHS.userConfig);
-  const projCfg = await loadProjectConfig();
-
-  let config = { ...programmatic };
-  config = merge(config, userCfg, dirname(PATHS.userConfig));
-  config = merge(config, projCfg, dirname(PATHS.projectConfig));
-  return config;
+  return mergeAll(programmatic, await loadProjectConfig());
 }
