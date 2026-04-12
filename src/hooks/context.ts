@@ -31,6 +31,7 @@ const CONTEXT_FILES = [
  */
 export function findContextFiles(startDir: string = process.cwd()): string[] {
   const found: string[] = [];
+  const seen = new Set<string>();
   const visited = new Set<string>();
   let dir = startDir;
 
@@ -39,7 +40,8 @@ export function findContextFiles(startDir: string = process.cwd()): string[] {
 
     for (const name of CONTEXT_FILES) {
       const fullPath = join(dir, name);
-      if (existsSync(fullPath) && !found.includes(fullPath)) {
+      if (!seen.has(fullPath) && existsSync(fullPath)) {
+        seen.add(fullPath);
         found.push(fullPath);
       }
     }

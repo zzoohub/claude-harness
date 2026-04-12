@@ -140,7 +140,7 @@ function isError(output: string): boolean {
 }
 
 function sleep(ms: number): void {
-  execFileSync('sleep', [String(ms / 1000)]);
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 // ---------------------------------------------------------------------------
