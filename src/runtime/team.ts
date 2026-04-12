@@ -130,11 +130,11 @@ function readResult(taskId: string): { done: boolean; output: string } {
 
 function isError(output: string): boolean {
   const errorPatterns = [
-    /error:/i,
-    /fatal:/i,
-    /panic:/i,
-    /FAILED/,
-    /exit code [1-9]/i,
+    /^error:/im,
+    /\bfatal:/i,
+    /\bpanic:/i,
+    /\bFAILED\b/,
+    /\bexit code [1-9]\d*\b/i,
   ];
   return errorPatterns.some((p) => p.test(output));
 }

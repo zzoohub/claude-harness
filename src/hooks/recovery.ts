@@ -25,33 +25,29 @@ import { readState, updateData } from '../core/state.js';
 // ---------------------------------------------------------------------------
 
 const CONTEXT_LIMIT_PATTERNS = [
-  /context.window/i,
-  /token.limit/i,
-  /max.tokens/i,
-  /too.long/i,
+  /context.window.*(exceeded|limit|full)/i,
+  /token.limit.*(exceeded|reached)/i,
+  /max.tokens.*(exceeded|reached)/i,
   /prompt.is.too.long/i,
-  /context.length/i,
-  /maximum.context/i,
+  /maximum.context.*(exceeded|reached|length)/i,
 ];
 
 const EDIT_ERROR_PATTERNS = [
   /old_string.*not found/i,
-  /no match found/i,
   /string to replace not found/i,
-  /could not find/i,
-  /does not exist/i,
-  /multiple matches/i,
-  /not unique/i,
+  /could not find.*to replace/i,
+  /multiple matches.*old_string/i,
+  /not unique.*in the file/i,
 ];
 
 const AGENT_ERROR_PATTERNS = [
-  /error:/i,
-  /failed/i,
-  /timed? ?out/i,
-  /panic/i,
-  /exception/i,
-  /SIGTERM/i,
-  /exit code [1-9]/i,
+  /^error:/im,
+  /\bfailed with exit code [1-9]/i,
+  /\btimed? ?out\b/i,
+  /\bpanic:/i,
+  /\bunhandled exception\b/i,
+  /\bSIGTERM\b/,
+  /\bexit code [1-9]\d*\b/i,
 ];
 
 // ---------------------------------------------------------------------------
