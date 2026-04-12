@@ -7,6 +7,14 @@
 
 import type { Agent } from './types.js';
 
+interface SdkAgent {
+  description: string;
+  prompt: string;
+  model?: string;
+  tools?: string[];
+  disallowedTools?: string[];
+}
+
 export class AgentRegistry {
   private agents = new Map<string, Agent>();
 
@@ -37,25 +45,17 @@ export class AgentRegistry {
   }
 
   /** Format agents for the Claude Agent SDK's `agents` parameter. */
-  toSdkFormat(): Record<string, {
-    description: string;
-    prompt: string;
-    model?: string;
-    tools?: string[];
-    disallowedTools?: string[];
-  }> {
-    const out: Record<string, Record<string, unknown>> = {};
+  toSdkFormat(): Record<string, SdkAgent> {
+    const out: Record<string, SdkAgent> = {};
 
     for (const [name, a] of this.agents) {
-      out[name] = {
-        description: a.description,
-        prompt: a.prompt,
-        ...(a.model && { model: a.model }),
-        ...(a.tools && { tools: a.tools }),
-        ...(a.disallowedTools && { disallowedTools: a.disallowedTools }),
-      };
+      const entry: SdkAgent = { description: a.description, prompt: a.prompt };
+      if (a.model) entry.model = a.model;
+      if (a.tools) entry.tools = a.tools;
+      if (a.disallowedTools) entry.disallowedTools = a.disallowedTools;
+      out[name] = entry;
     }
 
-    return out as ReturnType<AgentRegistry['toSdkFormat']>;
+    return out;
   }
 }
