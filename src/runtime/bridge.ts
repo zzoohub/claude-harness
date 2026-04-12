@@ -14,7 +14,10 @@
 import { createHarness } from '../index.js';
 import { loadProjectConfig } from '../core/config.js';
 import { handlePermissionRequest } from '../hooks/permission.js';
+import { EVENT } from '../core/constants.js';
 import type { HookEvent, HookInput } from '../core/types.js';
+
+const VALID_EVENTS = new Set<string>(Object.values(EVENT));
 
 // ---------------------------------------------------------------------------
 // stdin / stdout helpers
@@ -46,12 +49,13 @@ function parseInput(raw: string, event: HookEvent): HookInput {
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const event = process.argv[2] as HookEvent | undefined;
-  if (!event) {
-    process.stderr.write('[harness] Missing event argument\n');
+  const rawEvent = process.argv[2];
+  if (!rawEvent || !VALID_EVENTS.has(rawEvent)) {
+    process.stderr.write(`[harness] Invalid or missing event: ${rawEvent ?? '(none)'}\n`);
     process.stdout.write('{}');
     return;
   }
+  const event = rawEvent as HookEvent;
 
   const raw = await readStdin();
   if (!raw.trim()) {
